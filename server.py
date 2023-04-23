@@ -104,7 +104,7 @@ def handle_dialog(res, req, user_id):
         res["response"]["text"] = f"{time_of_day}! {texts['can']} "
         res["response"]["card"] = {"type": "BigImage",
                                    "image_id": "1533899/77e559aca507b3b13e9d",
-                                   "title": f"{time_of_day}! Я подскажу что вам выбрать или назову праздник на любой день.\nЧтобы ознакомиться со мной нажмите на кнопку \"Помощь\"."}
+                                   "title": f"{time_of_day}! Я помогу в выборе еды или назову праздник.\nЧтобы ознакомиться со мной, нажмите на \"Помощь\"."}
         res["response"]["buttons"] = actions_buttons.copy()
         return
     session = sessionStorage[user_id]
