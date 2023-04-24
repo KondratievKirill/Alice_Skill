@@ -3,6 +3,7 @@ import datetime
 from bs4 import BeautifulSoup as bs
 from random import randint, choice
 import sqlite3
+import datetime
 
 
 def add_help_btn(res):
@@ -82,7 +83,7 @@ def rest_ask_btns(url=None):
             "hide": True
         },
         {
-            "title": "Хватит",
+            "title": "Достаточно",
             "hide": True
         }
     ]
@@ -104,7 +105,14 @@ def reset_smt(what, session):
 
 
 def get_recipe():
-    url = 'https://www.russianfood.com/recipes/bytype/?fid=926&page='
+    hour = datetime.datetime.now().hour
+    url = 'https://www.russianfood.com/recipes/bytype/?fid='
+    if 0 <= hour <= 9:
+        url += '926&page='
+    elif 10 <= hour <= 16:
+        url += '928&page='
+    elif 17 <= hour <= 24:
+        url += '927&page='
     req = requests.get(url + str(randint(1, 44)))
     result = bs(req.content, "html.parser")
     title = result.select(".title_o > .title > a")
@@ -145,12 +153,8 @@ def get_holidays(dates):  # dates - список дат по типу: ["08.03",
     con.close()
     return hols
 
-
-def get_facts(date):  # date - дата, например, "08.03"
-    # TODO: написать функцию
-    return "пока не сделано"
-
-
+  
+  
 def get_dates(req):
     command = req['request']['command']
     for symb in '.&?,!;:':
