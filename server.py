@@ -8,10 +8,6 @@ import datetime
 
 app = Flask(__name__)
 sessionStorage = {}
-
-# TODO: сделать разные варианты ответов на одни и те же вопросы
-# TODO: разобраться с интентами, я так понимаю это что-то нужно, хотя толком и не знаю, что это
-
 texts = {"help": ["Задайте мне вопрос \"Где поесть?\", и я отвечу где можно перекусить или "
                   "задайте вопрос \"Что мне приготовить\", и я помогу вам подобрать рецепт, "
                   "а можете задать вопрос \"Какой сегодня праздник?\" и вы узнаете о сегодняшних праздниках, "
@@ -21,9 +17,8 @@ texts = {"help": ["Задайте мне вопрос \"Где поесть?\", 
                   "Спросите \"Какой сегодня праздник?\" и вы узнаете о празднике, хотя можете "
                   "спросить какие праздники будут в следующие, например, 30 дней."],
          "can": [
-             "Я умею определять, какой будет праздник в названную вами дату, подсказывать что и как вам приготовить "
-             "или помогать с выбором ресторана."],
-         "bad request": ["Не поняла вас.", "Что?", "Еще раз.", "Не очень понятно..."]}
+             "Я помогу в выборе еды или назову праздник.\nЧтобы ознакомиться со мной, нажмите на \"Помощь\"."],
+         "bad request": ["Не поняла вас.", "Что?", "Ещё раз.", "Не очень понятно..."]}
 
 actions_buttons = [
     {
@@ -49,7 +44,7 @@ recipe_btns = [
         "hide": True
     },
      {
-        "title": "Хватит",
+        "title": "Достаточно",
         "hide": True
     }
 ]
@@ -101,10 +96,10 @@ def handle_dialog(res, req, user_id):
             time_of_day = 'Добрый день'
         elif 19 <= hour <= 24:
             time_of_day = 'Добрый вечер'
-        res["response"]["text"] = f"{time_of_day}! {texts['can']} "
+        res["response"]["text"] = f"{time_of_day}! {texts['can'][0]} "
         res["response"]["card"] = {"type": "BigImage",
                                    "image_id": "1533899/77e559aca507b3b13e9d",
-                                   "title": f"{time_of_day}! Я помогу в выборе еды или назову праздник.\nЧтобы ознакомиться со мной, нажмите на \"Помощь\"."}
+                                   "title": f"{time_of_day}! {texts['can'][0]}"}
         res["response"]["buttons"] = actions_buttons.copy()
         return
     session = sessionStorage[user_id]
@@ -164,7 +159,7 @@ def holiday(res, req, ses):
             res["response"]["text"] = f"{holidays}!\nПро какую дату вы еще хотите узнать?"
             res['response']['buttons'] = [
                 {
-                    "title": "Хватит",
+                    "title": "Достаточно",
                     "hide": True
                 }
             ]
@@ -172,16 +167,21 @@ def holiday(res, req, ses):
             res["response"][
                 "text"] = "К сожалению либо в это время нет праздников, либо я таких не знаю, " \
                           "про какую дату вы еще хотите узнать?"
+            res['response']['buttons'] = [
+                {
+                    "title": "Достаточно",
+                    "hide": True
+                }
+            ]
 
 
 def recipe(res, req, ses):
-    # TODO: проверить функцию
     rec = ses["recipe"]
     if check_tokens(["хватит", "достаточно", "нет"], req) or (check_tokens(['не'], req) and check_tokens(['надо'], req)):
         res["response"]["text"] = f"Удачи! А не хотите узнать есть ли сегодня праздник, " \
-                                  f"приготовить что-нибудь другое или пойти ресторан?"
+                                  f"приготовить что-нибудь другое или пойти в ресторан?"
         res["response"]["tts"] = f"Удачи! А не хотите узнать есть ли сегодня праздник, " \
-                                 f"приготовить что-нибудь другое или пойти ресторан?"
+                                 f"приготовить что-нибудь другое или пойти в ресторан?"
         reset_smt("recipe", ses)
         ses["state"] = None
         res["response"]["buttons"] = actions_buttons.copy()
@@ -220,7 +220,7 @@ def recipe(res, req, ses):
                 "hide": True
             },
             {
-                "title": "Хватит",
+                "title": "Достаточно",
                 "hide": True
             }
         ]
@@ -243,17 +243,14 @@ def recipe(res, req, ses):
             res["response"]["buttons"] = ses["last_buttons"].copy()
     else:
         res["repsonse"]["text"] = "Что-то пошло не так..."
-        # по идее до сюда программа не должна доходить вообще
 
 
 def restaurant(res, req, ses, first=False):
-    # TODO: проверить функцию
-    # TODO: сделать возможность узнать геолокацию пользователя, не спрашивая напрямую
     rest = ses["restaurant"]
 
     try:
         location = get_location(req)
-        if check_tokens(["хватит", "достаточно", "нет"], req) or (check_tokens(['не'], req) and check_tokens(['надо'], req)):
+        if check_tokens(["хватит", "достаточно", "нет"], req) or (check_tokens(['не'], req) and check_tokens(['надо'], req) and not check_tokens(["другой"], req)):
             res["response"]["text"] = f"Удачи! А не хотите узнать есть ли сегодня праздник, " \
                                       f"приготовить что-нибудь другое или пойти ресторан?"
             res["response"]["tts"] = f"Удачи! А не хотите узнать есть ли сегодня праздник, " \
@@ -270,6 +267,7 @@ def restaurant(res, req, ses, first=False):
         elif not rest["orgs"]:
             res["response"]["text"] = ("" if first else choice(
                 texts["bad request"]) + " ") + "А по какому адресу вы сейчас находитесь?"
+            res["response"]["buttons"] = [{"title": "Достаточно", "hide": True}]
         elif rest["orgs"] and not rest["ask_info"] and not rest["change_rest"]:
             res["response"]["text"] = f"Вы можете пойти в ресторан " \
                                       f"\"{rest['orgs'][rest['i']]['properties']['CompanyMetaData']['name']}\", находящийся по адресу " \
